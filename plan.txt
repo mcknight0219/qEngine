@@ -1,0 +1,23 @@
+2015/01/12
+
+Fix all compiling errors. [Done]
+Render the normals on the surface. [Done]
+Rev light managing class.
+Re-write input event class. [Done]
+Draw fonts on screen (2D rendering?)
+Memory leak on Windows, a very serious one. Seems each frame sucks in significant amount
+of memory
+
+2015/01/13
+
+Quaternion. It can be used to describe camera path.
+Implement basic quaternion operations in Math library
+
+Understanding homogeneous space clipping
+
+2015/01/14
+
+Make best effort to understand quaternion and especially the
+slerp that interpolates between key camera frames.
+
+
