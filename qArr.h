@@ -185,8 +185,29 @@ inline void qArr<T>::Remove(int n)
 }
 
 
+// Replace data with that from other. When passed in
+// object has zero elements, it's the same as Clear()
 template<class T>
+inline void qArr<T>::Replace(const qArr<T>& other)
+{
+    if( !other.Size() ) {
+        Clear();
+        return;
+    }
 
+    if( other.Size() == size ) {
+        memcpy(data, other.data, sizeof(T) * size);
+        return;
+    }    
+
+    if( other.Size() > size ) {
+        nrAlloc = other.nrAlloc;
+        data = (T*)realloc(data, nrAlloc);
+    }
+        
+    size = other.Size();
+    memcpy(data, other.data, sizeof(T) * size);
+}
 
 
 

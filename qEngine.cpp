@@ -763,7 +763,7 @@ static void R_SilPrune(qArr<edge_t>& edges, siledge_index_t** index)
                 found = true;
         }
         if( !found ) {
-            edges.Remove(i);
+            continue;
         }
         processed.Add(edges[i]);
     }
