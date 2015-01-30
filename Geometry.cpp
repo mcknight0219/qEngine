@@ -7,7 +7,7 @@ Plane::Plane(Vec3 n1, Vec3 n2, Vec3 n3)
     Vec3 d1 = n2 - n1;
     Vec3 d2 = n3 - n1;
     Vec3 n = d2.CrossProduct(d1);
-    n = n.Normalize();
+    normal = n.Normalize();
     dist = -(n[0] * n1[0] + n[1] * n1[1] + n[2] * n1[2]);
 }
 

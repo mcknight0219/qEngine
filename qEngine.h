@@ -67,6 +67,7 @@ struct light_t {
 struct siledge_t {
     int     p1, p2; // two triangle sharing the edge
     int     v1, v2;
+    byte    flag;   // marks if it's a silhoutee edge
 };
 
 
@@ -106,7 +107,6 @@ public:
 	void	    RenderEntity(Entity * entity);
 	void	    RenderBBox(Entity * entity);
 	void	    RenderNormal(Entity * entity);
-    void        RenderSilhouette(Entity * entity, light_t * l);
 	void	    SetProjectionMat();
 	void	    SetViewMat();
     void        SetLighting();
@@ -144,6 +144,7 @@ private:
 	void	    AddEntity(qStr modelName, Vec3 modelPos);
 	void	    GetColorBuffer(unsigned char *);
     silhouette_t*     GetSilhouette(const Entity * entity, light_t * l);
+    void        R_SilDebugDraw(silhouette_t *);
 
 private:
 	// place to find all resources

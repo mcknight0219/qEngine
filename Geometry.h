@@ -49,7 +49,7 @@ class Plane
 public :
 				Plane() : normal(Vec3(0)), dist(0) {}
 	            Plane(Vec3 n, float d) : normal(n), dist(d) {}
-                Plane(Vec3 n1, Vec3 n2, Vec3 n3);
+    explicit    Plane(Vec3 n1, Vec3 n2, Vec3 n3);
 				
 	void		operator=(const Plane& other);
 public:

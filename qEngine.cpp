@@ -495,29 +495,6 @@ void qEngine::RenderBBox(Entity * entity)
 	free(buf);
 }
 
-void qEngine::RenderSilhouette(Entity * entity, light_t * l)
-{
-    if( l == NULL || entity == NULL ) {
-        return;
-    }
-
-	GetSilhouette(entity, l);
-
-    glDisable(GL_TEXTURE_2D);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glDisableClientState(GL_NORMAL_ARRAY);
-
-    // Is this a cool color for silhouette
-    glColor4f(0.5, 0.5, 0.5, 0.8);
-   
-    
-    glColor4f(1, 1, 1, 1);
-    glEnable(GL_TEXTURE_2D);
-    glEnableClientState(GL_NORMAL_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-}
-
 
 void qEngine::RenderEntity(Entity * entity)
 {
@@ -566,7 +543,6 @@ void qEngine::RenderEntity(Entity * entity)
 	
 	//RenderBBox(entity);
 	//RenderNormal(entity);
-    RenderSilhouette(entity, GetDefaultLight());
 
 	glPopMatrix();
 }
@@ -668,7 +644,7 @@ static void R_SilCullFacing(unsigned short* tri, int numIndex, vertex_t* vert, l
 
         Plane pl(v1, v2, v3);
 		Vec3 pos(light->pos[0], light->pos[1], light->pos[2]);
-        sil.facing[i] = pl.Side(pos) == PS_OUT ? 1 : 0;
+        sil.facing[i] = (pl.Side(pos) == PS_OUT ? 1 : 0);
     }
 } 
 
@@ -724,17 +700,14 @@ struct siledge_index_t
 
 static void R_SilIndexing(qArr<edge_t>& edges, siledge_index_t** index)
 {
-    if( *index )
-        return;
-
     int maxIndex = edges.Last().p1;
     *index = new siledge_index_t(maxIndex);
     siledge_index_t * si = *index;
-    memset(si->index, 0, sizeof(int) * maxIndex);
+    memset(si->index, -1, sizeof(int) * maxIndex);
 
     for( int i = 0; i < edges.Size(); ++i ) {
         int j = edges[i].p1;
-        if( !si->index[j] ) {
+        if( si->index[j] == -1 ) {
             si->index[j] = i;
         }
     }
@@ -758,7 +731,7 @@ static void R_SilPrune(qArr<edge_t>& edges, siledge_index_t** index)
             continue;
         }
         bool found = false;
-        for( int j = idx->index[p2]; j < idx->index[p2+1]; ++j ) {
+        for( int j = idx->index[p2]; j < std::min<int>(idx->index[p2+1], edges.Size()); ++j ) {
             if( edges[j].p2 == p1 )
                 found = true;
         }
@@ -770,10 +743,20 @@ static void R_SilPrune(qArr<edge_t>& edges, siledge_index_t** index)
     edges.Replace(processed);
 }
 
+
+static int R_SilNextAvailIndex(siledge_index_t* si, int n)
+{
+    for( int k = n + 1; ; k++ ) {
+        if( si->index[k] != -1 ) 
+            return k;
+    }
+}
+
+
 static int R_SilFindOtherTri(qArr<edge_t>& edges, edge_t ea, siledge_index_t* si)
 {
     int k = si->index[ea.p2];
-    for( int j = k; j < si->index[ea.p2+1]; ++j ) {
+    for( int j = k; j < std::min<int>(R_SilNextAvailIndex(si, k), edges.Size()); ++j ) {
         edge_t eb = edges[j];
         if( eb.p2 == ea.p1 ) {
             return eb.tri;
@@ -783,6 +766,28 @@ static int R_SilFindOtherTri(qArr<edge_t>& edges, edge_t ea, siledge_index_t* si
     return -1;
 }
 
+// This code is stupid !
+static void R_SilClean(silhouette_t* si)
+{
+    if( !si || !si->sil ) {
+        return;
+    }
+
+    int count = 0;
+    for( int i = 0; i < si->numSilEdges; ++i ) {
+        count += (si->sil[i]).flag;
+    }
+
+    siledge_t* old = si->sil;
+    si->sil = (siledge_t*)calloc(1, count * sizeof(siledge_t));
+    int n = 0;
+    for( int j = 0; j < si->numSilEdges; ++j ) {
+        if( old[j].flag ) {
+            si->sil[n++] = old[j];
+        }
+    }
+    si->numSilEdges = n;
+}
 
 // Mess around with edges. Inefficient algorithm could be nightmare here
 static void R_SilFillEdge(Mesh* model, light_t* light, silhouette_t& sil)
@@ -793,6 +798,7 @@ static void R_SilFillEdge(Mesh* model, light_t* light, silhouette_t& sil)
     siledge_index_t * si = NULL;
 
     R_SilPrune(es, &si);
+    R_SilIndexing(es, &si);
 
     for( int i = 0; i < es.Size(); ++i ) {
         edge_t k = es[i];
@@ -816,20 +822,72 @@ silhouette_t* qEngine::GetSilhouette(const Entity * entity, light_t * light)
     if( !entity || !light ) {
         return NULL;
     }
-    silhouette_t* sil = (silhouette_t*)calloc(1, sizeof(*sil));
-    sil->sil = (siledge_t*)calloc(1, sizeof(siledge_t) * entity->GetModel()->GetNumIndex());
+    silhouette_t* si = (silhouette_t*)calloc(1, sizeof(*si));
+    si->sil = (siledge_t*)calloc(1, sizeof(siledge_t) * entity->GetModel()->GetNumIndex());
+    si->entity = const_cast<Entity*>(entity);
 
     Mesh* model = entity->GetModel();
-    R_SilFillEdge  (model, light, *sil);
-    R_SilCullFacing(model->GetIndexArray(), model->GetNumIndex(), model->GetVertexArray(), light, *sil);
+    R_SilFillEdge  (model, light, *si);
+    R_SilCullFacing(model->GetIndexArray(), model->GetNumIndex(), model->GetVertexArray(), light, *si);
 
-    if( !sil->facing ) {
+    if( !si->facing ) {
         logger->LogWarning("Failed generating facing info for entity");
         return NULL;
     }
 
-	return sil;
+    // Now we have all potential silhouette edges, let's
+    // find out the real ones	
+    for( int i = 0; i < si->numSilEdges; ++i ) {
+        siledge_t& eg = si->sil[i];
+        int p1 = eg.p1;
+        int p2 = eg.p2;
+        if( si->facing[p1] ^ si->facing[p2] ) {
+            eg.flag |= 1;     
+        }
+    } 
+
+    R_SilClean(si);
+    return si;
 }
+
+void qEngine::R_SilDebugDraw(silhouette_t *si)
+{
+    if( !si || !si->numSilEdges ) {
+        return;
+    }
+
+    glBegin( GL_LINES );
+    for( int i = 0; i < si->numSilEdges; ++i ) {
+        Vec3 a = si->sil[i].v1;
+        Vec3 b = si->sil[i].v2;
+        
+        glColor4f(0, 1, 0, 1);
+        glVertex3fx(a);
+        glVertex3fx(b);
+    }
+    glEnd();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

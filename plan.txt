@@ -11,13 +11,26 @@ of memory
 2015/01/13
 
 Quaternion. It can be used to describe camera path.
-Implement basic quaternion operations in Math library
+Implement basic quaternion operations in Math library [Done]
 
 Understanding homogeneous space clipping
 
 2015/01/14
 
 Make best effort to understand quaternion and especially the
-slerp that interpolates between key camera frames.
+slerp that interpolates between key camera frames. [Done]
 
 
+2015/01/30
+
+Doom BFG code uses a front-end and back-end architure. No matter what complexities
+front-end is involved, back-end only cares about triangle soup and render them on
+the screen. The benefit here is vertex data can be handled efficiently. You can stuff
+everything into a single buffer and feed it to pipeline once. For example, you want
+to throw in some debugging geometries, all you need do is append them to vertex buffer.
+
+Try experimenting such an architecture in my code. Create two VBOs, one for regular visual
+stuff(pos, normal, tangent, texture), and one for shadowing volumn, debugging drawing, and
+other task.
+
+Coding marason tonight!!!
